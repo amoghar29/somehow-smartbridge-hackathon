@@ -1,3 +1,188 @@
-.claude
-/venv
+# ========================================
+# Backend .gitignore
+# Personal Finance Assistant - FastAPI Backend
+# ========================================
+
+# Python
+# ----------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+# ----------------------------------------
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Environment Variables
+# ----------------------------------------
 .env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# IDE & Editors
+# ----------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+# ----------------------------------------
+logs/
+*.log
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# AI Model Cache (Large files)
+# ----------------------------------------
+model_cache/
+*.bin
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+models/
+checkpoints/
+
+# Database
+# ----------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+*.db-shm
+*.db-wal
+
+# Data Files (Optional - uncomment if needed)
+# ----------------------------------------
+# data/*.json
+# data/*.csv
+# data/*.xlsx
+
+# Keep sample data for development
+!data/sample_transactions.json
+
+# OS Specific
+# ----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Temporary Files
+# ----------------------------------------
+*.tmp
+*.temp
+*.bak
+*.swp
+*~.nib
+*.orig
+
+# Testing
+# ----------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+nosetests.xml
+
+# Package Managers
+# ----------------------------------------
+pip-log.txt
+pip-delete-this-directory.txt
+Pipfile.lock
+poetry.lock
+pdm.lock
+
+# Jupyter Notebook
+# ----------------------------------------
+.ipynb_checkpoints
+*.ipynb
+
+# FastAPI Specific
+# ----------------------------------------
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Documentation Build
+# ----------------------------------------
+docs/_build/
+site/
+
+# Backup files
+# ----------------------------------------
+*.bak
+*.backup
+*_backup
+
+# Security
+# ----------------------------------------
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Cache
+# ----------------------------------------
+.cache/
+*.cache
+
+# Compressed files
+# ----------------------------------------
+*.zip
+*.tar.gz
+*.rar
+
+# Claude Code
+# ----------------------------------------
+.claude/

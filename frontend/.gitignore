@@ -1,4 +1,201 @@
-.venv
+# ========================================
+# Frontend .gitignore
+# Personal Finance Assistant - Streamlit Frontend
+# ========================================
+
+# Python
+# ----------------------------------------
 __pycache__/
-*.pyc
-.DS_Store   
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+# ----------------------------------------
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Environment Variables
+# ----------------------------------------
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Streamlit Specific
+# ----------------------------------------
+.streamlit/secrets.toml
+.streamlit/config.toml
+streamlit/secrets.toml
+
+# Streamlit cache
+.streamlit/
+*.streamlit/
+
+# IDE & Editors
+# ----------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS Specific
+# ----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Python Version Management
+# ----------------------------------------
+.python-version
+.pyenv
+
+# Package Managers
+# ----------------------------------------
+pip-log.txt
+pip-delete-this-directory.txt
+Pipfile.lock
+poetry.lock
+pdm.lock
+uv.lock
+
+# Keep requirements and pyproject
+!requirements.txt
+!pyproject.toml
+
+# Logs
+# ----------------------------------------
+logs/
+*.log
+log/
+
+# Temporary Files
+# ----------------------------------------
+*.tmp
+*.temp
+*.bak
+*.swp
+*~.nib
+*.orig
+
+# Testing
+# ----------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+nosetests.xml
+
+# Database (if any)
+# ----------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+*.db-shm
+*.db-wal
+
+# User Data (if storing locally)
+# ----------------------------------------
+user_data/
+sessions/
+uploads/
+
+# Cache
+# ----------------------------------------
+.cache/
+*.cache
+
+# Type Checking
+# ----------------------------------------
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Jupyter Notebook
+# ----------------------------------------
+.ipynb_checkpoints
+*.ipynb
+
+# Documentation Build
+# ----------------------------------------
+docs/_build/
+site/
+
+# Backup files
+# ----------------------------------------
+*.bak
+*.backup
+*_backup
+
+# Security
+# ----------------------------------------
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Compressed files
+# ----------------------------------------
+*.zip
+*.tar.gz
+*.rar
+
+# Node modules (if using any JS tooling)
+# ----------------------------------------
+node_modules/
+package-lock.json
+
+# Static assets (large files)
+# ----------------------------------------
+# Uncomment if you have large static files
+# static/large_files/
+# assets/videos/
+
+# Claude Code
+# ----------------------------------------
+.claude/

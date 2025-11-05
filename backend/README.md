@@ -1,337 +1,246 @@
-# Personal Finance RAG Chatbot - Complete Implementation Guide
+# Personal Finance Assistant Backend
 
-## 🚀 Project Overview
+AI-powered personal finance backend using FastAPI and IBM Granite 3.0 2B model.
 
-An intelligent personal finance management system powered by IBM Granite models, featuring RAG-based conversational AI, spending analysis, goal tracking, tax planning, and investment management.
+## Features
 
-## 📋 Table of Contents
-- [System Architecture](#system-architecture)
-- [Technology Stack](#technology-stack)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Installation Guide](#installation-guide)
-- [Configuration](#configuration)
-- [API Documentation](#api-documentation)
-- [Features Documentation](#features-documentation)
-- [Deployment Guide](#deployment-guide)
+- **Budget Analysis**: Analyze spending patterns and get AI-powered insights
+- **Goal Planning**: Create savings plans for financial goals
+- **Tax Advisory**: Get tax-saving advice (Indian tax context)
+- **Transaction Management**: Track income and expenses
+- **Analytics Dashboard**: View financial trends and summaries
 
-## 🏗️ System Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Frontend (Streamlit)                   │
-│  ┌────────┐ ┌──────────┐ ┌─────────┐ ┌──────────────┐ │
-│  │Dashboard│ │  Goals   │ │   Tax   │ │Learning Chat │ │
-│  └────────┘ └──────────┘ └─────────┘ └──────────────┘ │
-└─────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Backend (FastAPI)                      │
-│  ┌─────────────┐ ┌──────────────┐ ┌────────────────┐   │
-│  │ Auth & User │ │Finance Logic │ │  RAG Pipeline  │   │
-│  │ Management  │ │   Services   │ │   (LangChain)  │   │
-│  └─────────────┘ └──────────────┘ └────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-                            │
-                ┌───────────┴────────────┐
-                ▼                        ▼
-    ┌──────────────────┐      ┌───────────────────┐
-    │     MongoDB      │      │   Vector Store    │
-    │  Collections:    │      │   (Chroma/FAISS)  │
-    │  - users         │      │                   │
-    │  - transactions  │      │  Embeddings for:  │
-    │  - goals         │      │  - Documents      │
-    │  - chat_history  │      │  - Finance guides │
-    │  - investments   │      │  - Tax laws       │
-    └──────────────────┘      └───────────────────┘
-                            │
-                            ▼
-                ┌───────────────────────┐
-                │   IBM Granite Models  │
-                │  (via HuggingFace)    │
-                └───────────────────────┘
+backend/
+├── main.py                 # FastAPI application entry point
+├── config/                 # Configuration settings
+│   └── settings.py
+├── core/                   # Core functionality
+│   ├── granite_api.py     # IBM Granite model integration
+│   ├── utils.py           # Helper functions
+│   └── logger.py          # Logging configuration
+├── models/                 # Pydantic models
+│   ├── request_models.py
+│   └── response_models.py
+├── agents/                 # AI agents
+│   ├── budget_agent.py
+│   ├── goal_agent.py
+│   ├── tax_agent.py
+│   └── intent_router.py
+├── routes/                 # API routes
+│   ├── base_routes.py
+│   └── finance_routes.py
+├── data/                   # Sample data
+│   └── sample_transactions.json
+└── logs/                   # Application logs
 ```
 
-## 💻 Technology Stack
+## Setup Instructions
 
-### Core Technologies
-- **Backend Framework**: FastAPI (Python 3.10+)
-- **Frontend Framework**: Streamlit
-- **Database**: MongoDB (v6.0+)
-- **Vector Store**: ChromaDB/FAISS
-- **LLM Framework**: LangChain/LangGraph
-- **LLM Models**: IBM Granite (via HuggingFace)
-- **Data Visualization**: Plotly
+### Prerequisites
 
-### Key Dependencies
-```python
-# Backend
-fastapi==0.104.1
-uvicorn==0.24.0
-pymongo==4.5.0
-motor==3.3.2
-pydantic==2.4.2
-python-multipart==0.0.6
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-dotenv==1.0.0
+- Python 3.10 or higher
+- 8GB+ RAM (for model loading)
+- Windows/Linux/macOS
 
-# AI/ML
-langchain==0.1.0
-langgraph==0.0.20
-chromadb==0.4.18
-transformers==4.35.2
-sentence-transformers==2.2.2
-huggingface-hub==0.19.4
+### Installation
 
-# Frontend
-streamlit==1.29.0
-plotly==5.18.0
-pandas==2.1.3
-```
+1. **Create virtual environment:**
+   ```bash
+   python -m venv venv
+   ```
 
-## 📁 Project Structure
+2. **Activate virtual environment:**
+   - Windows: `venv\Scripts\activate`
+   - Linux/Mac: `source venv/bin/activate`
 
-```
-personal-finance-bot/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── config/
-│   │   │   ├── __init__.py
-│   │   │   ├── settings.py
-│   │   │   └── database.py
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── user.py
-│   │   │   ├── transaction.py
-│   │   │   ├── goal.py
-│   │   │   ├── investment.py
-│   │   │   └── chat.py
-│   │   ├── schemas/
-│   │   │   ├── __init__.py
-│   │   │   ├── user_schema.py
-│   │   │   ├── transaction_schema.py
-│   │   │   ├── goal_schema.py
-│   │   │   └── chat_schema.py
-│   │   ├── api/
-│   │   │   ├── __init__.py
-│   │   │   ├── v1/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── auth.py
-│   │   │   │   ├── users.py
-│   │   │   │   ├── transactions.py
-│   │   │   │   ├── goals.py
-│   │   │   │   ├── investments.py
-│   │   │   │   ├── chat.py
-│   │   │   │   ├── documents.py
-│   │   │   │   └── analytics.py
-│   │   │   └── dependencies.py
-│   │   ├── services/
-│   │   │   ├── __init__.py
-│   │   │   ├── auth_service.py
-│   │   │   ├── finance_analyzer.py
-│   │   │   ├── goal_planner.py
-│   │   │   ├── tax_advisor.py
-│   │   │   └── investment_tracker.py
-│   │   ├── ai/
-│   │   │   ├── __init__.py
-│   │   │   ├── rag_pipeline.py
-│   │   │   ├── embeddings.py
-│   │   │   ├── vector_store.py
-│   │   │   ├── prompts/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── finance_prompts.py
-│   │   │   │   ├── goal_prompts.py
-│   │   │   │   └── tax_prompts.py
-│   │   │   └── chains.py
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       ├── email_parser.py
-│   │       └── helpers.py
-│   ├── tests/
-│   │   └── ...
-│   ├── requirements.txt
-│   └── .env
-├── frontend/
-│   ├── app.py
-│   ├── pages/
-│   │   ├── 1_📊_Dashboard.py
-│   │   ├── 2_🎯_Goals.py
-│   │   ├── 3_💰_Tax_Planner.py
-│   │   └── 4_📚_Learning_Bot.py
-│   ├── components/
-│   │   ├── __init__.py
-│   │   ├── charts.py
-│   │   ├── cards.py
-│   │   └── forms.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── api_client.py
-│   │   └── session_state.py
-│   ├── config/
-│   │   └── settings.py
-│   └── requirements.txt
-├── data/
-│   ├── documents/
-│   ├── embeddings/
-│   └── uploads/
-├── scripts/
-│   ├── setup_db.py
-│   ├── populate_vectors.py
-│   └── migrate.py
-├── docker-compose.yml
-├── .gitignore
-└── README.md
-```
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## 🔧 Prerequisites
+4. **Create .env file:**
+   ```bash
+   copy .env.example .env  # Windows
+   # or
+   cp .env.example .env    # Linux/Mac
+   ```
 
-### Required API Keys
+### Running the Backend
+
 ```bash
-# Create .env file in backend/ directory
-HUGGINGFACE_API_KEY=your_hf_api_key_here
-MONGODB_URI=mongodb://localhost:27017/finance_bot
-JWT_SECRET_KEY=your_secret_key_here
-JWT_ALGORITHM=HS256
-REDIS_URL=redis://localhost:6379
+# Method 1: Using Python directly
+python main.py
+
+# Method 2: Using uvicorn
+uvicorn main:app --reload --port 8000
 ```
 
-### System Requirements
-- Python 3.10+
-- MongoDB 6.0+
-- Redis (optional, for caching)
-- 8GB+ RAM recommended
-- 10GB+ storage for vector embeddings
+The API will be available at:
+- **API Base URL**: http://127.0.0.1:8000
+- **Interactive Docs**: http://127.0.0.1:8000/docs
+- **ReDoc**: http://127.0.0.1:8000/redoc
 
-## 📦 Installation Guide
+### First Run
 
-### Step 1: Clone Repository
+On the first run, the IBM Granite model will be downloaded automatically (approximately 2-3 GB). This may take several minutes depending on your internet connection. The model is cached in the `model_cache/` directory for subsequent runs.
+
+## API Endpoints
+
+### Health Check
+- `GET /` - Basic health check
+- `GET /health` - Detailed health check with model status
+
+### AI Endpoints
+- `POST /ai/generate` - General AI chat
+- `POST /ai/budget-summary` - Budget analysis
+- `POST /ai/goal-planner` - Goal planning
+- `POST /ai/tax-advice` - Tax advisory
+
+### Analytics
+- `GET /analytics/summary` - Dashboard analytics
+
+### Transactions
+- `POST /transactions/add` - Add transaction
+- `GET /transactions/recent` - Get recent transactions
+
+## Example API Usage
+
+### Budget Analysis
+
 ```bash
-git clone https://github.com/yourrepo/personal-finance-bot.git
-cd personal-finance-bot
+curl -X POST "http://127.0.0.1:8000/ai/budget-summary" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "income": 60000,
+    "expenses": {
+      "Housing": 15000,
+      "Food": 10000,
+      "Transportation": 5000,
+      "Entertainment": 3000
+    },
+    "persona": "professional"
+  }'
 ```
 
-### Step 2: Setup Python Virtual Environment
+### Goal Planning
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+curl -X POST "http://127.0.0.1:8000/ai/goal-planner" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal_name": "Emergency Fund",
+    "target_amount": 100000,
+    "months": 12,
+    "income": 60000,
+    "persona": "professional",
+    "current_savings": 10000
+  }'
 ```
 
-### Step 3: Install Backend Dependencies
+### Add Transaction
+
 ```bash
-cd backend
-pip install -r requirements.txt
+curl -X POST "http://127.0.0.1:8000/transactions/add" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Grocery Shopping",
+    "amount": 2500,
+    "category": "Food",
+    "type": "expense"
+  }'
 ```
 
-### Step 4: Install Frontend Dependencies
+## Configuration
+
+Edit `config/settings.py` to customize:
+- Model ID and configuration
+- API host and port
+- CORS settings
+- Directory paths
+
+## Logging
+
+Application logs are stored in `logs/app.log` with the following levels:
+- INFO: General information and request logs
+- WARNING: Warning messages
+- ERROR: Error messages with stack traces
+
+## Performance Notes
+
+- First request will take longer as the model loads
+- Subsequent requests are much faster (1-3 seconds)
+- Model runs on CPU only (no GPU required)
+- Recommended minimum: 8GB RAM
+
+## Troubleshooting
+
+### Model Loading Issues
+
+If the model fails to load:
+1. Check internet connection
+2. Ensure sufficient disk space (5GB+)
+3. Delete `model_cache/` and retry
+4. Check logs in `logs/app.log`
+
+### Port Already in Use
+
+If port 8000 is already in use:
 ```bash
-cd ../frontend
-pip install -r requirements.txt
+# Windows
+netstat -ano | findstr :8000
+
+# Linux/Mac
+lsof -i :8000
 ```
 
-### Step 5: Setup MongoDB
+Change the port in `config/settings.py` or pass it as a parameter:
 ```bash
-# Install MongoDB (Ubuntu/Debian)
-sudo apt-get install mongodb
-
-# Start MongoDB
-sudo systemctl start mongodb
-
-# Create database and collections
-python ../scripts/setup_db.py
+uvicorn main:app --port 8001
 ```
 
-### Step 6: Initialize Vector Store
+### Memory Issues
+
+If you encounter memory errors:
+- Close other applications
+- Reduce `MAX_NEW_TOKENS` in `config/settings.py`
+- Consider using a smaller model
+
+## Integration with Frontend
+
+The backend is designed to work with the Streamlit frontend. Ensure:
+1. Backend is running on port 8000
+2. Frontend API client points to http://127.0.0.1:8000
+3. CORS is configured to allow frontend origin
+
+## Development
+
+### Adding New Endpoints
+
+1. Create request/response models in `models/`
+2. Add business logic in `agents/`
+3. Create route handler in `routes/finance_routes.py`
+4. Register router in `main.py`
+
+### Running Tests
+
 ```bash
-python ../scripts/populate_vectors.py
+# Install test dependencies
+pip install pytest pytest-asyncio httpx
+
+# Run tests (when available)
+pytest tests/
 ```
 
-### Step 7: Run Backend Server
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8000
-```
+## License
 
-### Step 8: Run Frontend Application
-```bash
-cd frontend
-streamlit run app.py
-```
+This project is for educational and demonstration purposes.
 
-## 🔑 Configuration Details
+## Support
 
-### IBM Granite Model Configuration
-```python
-# backend/app/config/settings.py
-GRANITE_MODEL_NAME = "ibm-granite/granite-7b-base"
-EMBEDDING_MODEL = "ibm-granite/granite-embedding-125m-english"
-MAX_TOKENS = 2048
-TEMPERATURE = 0.7
-```
-
-### MongoDB Schema Configuration
-See `BACKEND_DOCUMENTATION.md` for detailed schema definitions.
-
-## 📚 API Documentation
-
-The API documentation is automatically generated and available at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-## 🎯 Features
-
-### 1. Smart Dashboard
-- Real-time spending analysis
-- Investment portfolio overview
-- Monthly/weekly comparisons
-- Category-wise expense breakdown
-
-### 2. Goal Tracker
-- AI-powered savings recommendations
-- Multiple saving strategies (Easy/Medium/Aggressive)
-- Progress visualization
-- Milestone notifications
-
-### 3. Tax Planner
-- Personalized tax-saving suggestions
-- Section-wise deduction recommendations
-- Tax liability estimation
-- Document checklist
-
-### 4. Learning Chatbot
-- Context-aware financial guidance
-- Document-based Q&A
-- Personalized learning paths
-- Investment education
-
-## 🚀 Deployment
-
-### Docker Deployment
-```bash
-docker-compose up -d
-```
-
-### Production Deployment (AWS/GCP)
-See `DEPLOYMENT.md` for detailed production deployment instructions.
-
-## 📖 Additional Documentation
-
-- [Backend Development Guide](./BACKEND_DOCUMENTATION.md)
-- [Frontend Development Guide](./FRONTEND_DOCUMENTATION.md)
-- [API Reference](./API_REFERENCE.md)
-- [Database Schemas](./DATABASE_SCHEMAS.md)
-
-## 🤝 Contributing
-
-Please read our contributing guidelines before submitting PRs.
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support, email support@financebot.com or open an issue in the repository.
+For issues and questions:
+- Check logs in `logs/app.log`
+- Review API documentation at `/docs`
+- Open an issue in the GitHub repository

@@ -1,0 +1,17 @@
+# Simplified requirements with more flexible versions
+
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# AI/ML Dependencies - will install compatible versions automatically
+transformers>=4.36.0
+torch>=2.1.0
+accelerate>=0.25.0
+sentencepiece>=0.1.99
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+httpx>=0.25.0
