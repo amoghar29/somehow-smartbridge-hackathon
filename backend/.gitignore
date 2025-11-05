@@ -77,7 +77,7 @@ model_cache/
 *.ckpt
 *.pt
 *.pth
-models/
+
 checkpoints/
 
 # Database
