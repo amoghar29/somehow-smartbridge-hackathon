@@ -20,12 +20,12 @@ LOGS_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 
 # Model configuration
-# Use smaller model for faster download and testing
-MODEL_ID = "gpt2"  # 500MB - Much faster to download
-# MODEL_ID = "ibm-granite/granite-3.0-2b-instruct"  # 5GB - Original (uncomment when ready)
+# IBM Granite model - optimized for instructions and domain-specific tasks
+MODEL_ID = "ibm-granite/granite-3.0-2b-instruct"  # 5GB - Better quality responses
+# MODEL_ID = "gpt2"  # 500MB - Faster but lower quality (for testing only)
 DEVICE = "cpu"
 MAX_NEW_TOKENS = 300
-DEFAULT_TEMPERATURE = 0.7
+DEFAULT_TEMPERATURE = 0.1
 
 # Application metadata
 APP_NAME = "Personal Finance Assistant"

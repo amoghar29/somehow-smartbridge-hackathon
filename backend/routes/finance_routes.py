@@ -36,7 +36,7 @@ router = APIRouter()
 @router.post("/ai/generate", response_model=ChatResponse)
 async def generate_ai_response(request: ChatRequest):
     """
-    General AI response endpoint
+    General AI response endpoint - Always uses AI model for all questions
 
     Args:
         request: ChatRequest with question and persona
@@ -47,21 +47,26 @@ async def generate_ai_response(request: ChatRequest):
     try:
         logger.info(f"AI generate request: {request.question[:50]}...")
 
-        # Route to appropriate agent based on intent
-        intent = route_intent(request.question)
-
-        if intent == 'general':
-            # Use AI for general queries
-            prompt = f"""You are a helpful personal finance assistant. Answer this question concisely and accurately.
+        # Create a well-structured prompt for better responses
+        prompt = f"""You are a professional financial advisor. Answer the following question with practical and accurate advice.
 
 Question: {request.question}
 
-Provide a clear, helpful answer in 2-3 sentences."""
+Answer:"""
 
-            response_text = generate(prompt, max_new_tokens=150, temperature=0.7)
-        else:
-            # Provide guidance for specific intents
-            response_text = get_fallback_response(request.question)
+        response_text = generate(prompt, max_new_tokens=150, temperature=0.7)
+
+        # If response is too short or nonsensical, provide a fallback
+        if not response_text or len(response_text.strip()) < 20:
+            response_text = """I'm here to help with your financial questions! I can assist with:
+
+- Budget planning and expense tracking
+- Savings goals and strategies
+- Investment basics and portfolio allocation
+- Tax planning and deductions
+- Debt management
+
+Please ask a specific question and I'll provide detailed advice."""
 
         return ChatResponse(response=response_text)
 

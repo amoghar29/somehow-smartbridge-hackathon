@@ -34,28 +34,32 @@ class GraniteAPI:
             logger.info(f"Using device: {DEVICE}")
             logger.info(f"Cache directory: {CACHE_DIR}")
 
-            # Load tokenizer
+            # Load tokenizer from cache only (no internet check)
+            logger.info("Loading tokenizer from cache...")
             tokenizer = AutoTokenizer.from_pretrained(
                 MODEL_ID,
                 cache_dir=CACHE_DIR,
-                trust_remote_code=True
+                trust_remote_code=True,
+                local_files_only=True  # Force using cache, don't check for updates
             )
 
-            # Load model
+            # Load model from cache only (no internet check)
+            logger.info("Loading model from cache (this may take 10-30 seconds)...")
             model = AutoModelForCausalLM.from_pretrained(
                 MODEL_ID,
                 cache_dir=CACHE_DIR,
                 torch_dtype=torch.float32,  # Use float32 for CPU
                 trust_remote_code=True,
-                device_map="cpu"
+                device_map="auto",  # Let accelerate handle device placement
+                local_files_only=True  # Force using cache, don't check for updates
             )
 
             # Create text generation pipeline
+            # Don't specify device when using device_map with accelerate
             GraniteAPI._pipeline = pipeline(
                 "text-generation",
                 model=model,
-                tokenizer=tokenizer,
-                device=-1  # CPU
+                tokenizer=tokenizer
             )
 
             logger.info("Model loaded successfully!")
@@ -99,15 +103,18 @@ class GraniteAPI:
         try:
             logger.info(f"Generating response for prompt: {prompt[:100]}...")
 
-            # Generate text
+            # Generate text with better parameters for coherent responses
             result = GraniteAPI._pipeline(
                 prompt,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 do_sample=True,
-                top_p=0.9,
-                repetition_penalty=1.1,
-                pad_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id
+                top_p=0.95,
+                top_k=50,
+                repetition_penalty=1.2,
+                num_return_sequences=1,
+                pad_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id,
+                eos_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id
             )
 
             # Extract generated text
@@ -115,6 +122,25 @@ class GraniteAPI:
 
             # Remove the prompt from the output
             response = generated_text[len(prompt):].strip()
+
+            # Clean up the response
+            # Remove incomplete sentences at the end
+            if response:
+                # Split into sentences and take complete ones
+                sentences = response.split('.')
+                # Keep sentences that are reasonably complete
+                complete_sentences = []
+                for sent in sentences:
+                    sent = sent.strip()
+                    if len(sent) > 10:  # Minimum sentence length
+                        complete_sentences.append(sent)
+                    if len(complete_sentences) >= 3:  # Max 3 sentences for concise answers
+                        break
+
+                if complete_sentences:
+                    response = '. '.join(complete_sentences) + '.'
+                else:
+                    response = response[:200]  # Fallback: first 200 chars
 
             logger.info(f"Generated response: {response[:100]}...")
 

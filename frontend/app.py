@@ -211,19 +211,40 @@ class FinanceApp:
 
     def render_main_content(self):
         st.title("📊 Dashboard")
-        st.write("Welcome to your financial dashboard. Navigate using the sidebar to explore different features.")
 
-        # Display key metrics
-        col1, col2, col3, col4 = st.columns(4)
+        # Check backend health
+        if not self.api_client.check_health():
+            st.error("⚠️ Backend server is not running! Please start the backend server at http://localhost:8000")
+            st.info("Run: `cd backend && python main.py` to start the backend")
+            return
 
-        with col1:
-            st.metric("Monthly Income", "₹60,000", "+5%")
-        with col2:
-            st.metric("Monthly Expenses", "₹45,000", "-3%")
-        with col3:
-            st.metric("Savings", "₹15,000", "+12%")
-        with col4:
-            st.metric("Goals Progress", "65%", "+8%")
+        st.success("✅ Connected to backend server")
+        st.write("Welcome to your financial dashboard powered by AI.")
+
+        # Fetch analytics from backend
+        with st.spinner("Loading financial data..."):
+            analytics = self.api_client.get_analytics()
+
+        if analytics:
+            totals = analytics.get("totals", {})
+
+            # Display key metrics from backend
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                income = totals.get("income", 0)
+                st.metric("Monthly Income", f"₹{income:,.0f}")
+            with col2:
+                expenses = totals.get("expenses", 0)
+                st.metric("Monthly Expenses", f"₹{expenses:,.0f}")
+            with col3:
+                savings = totals.get("savings", 0)
+                st.metric("Savings", f"₹{savings:,.0f}")
+            with col4:
+                savings_rate = totals.get("savings_rate", 0)
+                st.metric("Savings Rate", f"{savings_rate:.1f}%")
+        else:
+            st.warning("Unable to load analytics data")
 
         st.divider()
 
@@ -232,28 +253,106 @@ class FinanceApp:
 
         with col1:
             st.subheader("📈 Spending Trends")
-            # Sample data for visualization
-            dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
-            data = pd.DataFrame({
-                'Date': dates,
-                'Spending': [2000 + i * 50 for i in range(len(dates))]
-            })
 
-            fig = px.line(data, x='Date', y='Spending', title='Daily Spending Pattern')
-            st.plotly_chart(fig, use_container_width=True)
+            if analytics and "trend_data" in analytics:
+                trend_data = analytics["trend_data"]
+                df = pd.DataFrame(trend_data)
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=df['month'],
+                    y=df['income'],
+                    mode='lines+markers',
+                    name='Income',
+                    line=dict(color='#84fab0', width=3)
+                ))
+                fig.add_trace(go.Scatter(
+                    x=df['month'],
+                    y=df['expenses'],
+                    mode='lines+markers',
+                    name='Expenses',
+                    line=dict(color='#f5576c', width=3)
+                ))
+
+                fig.update_layout(
+                    title='Income vs Expenses Trend',
+                    xaxis_title='Month',
+                    yaxis_title='Amount (₹)',
+                    height=400,
+                    hovermode='x unified',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0.02)'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No trend data available")
 
         with col2:
             st.subheader("📋 Recent Transactions")
-            transactions = [
-                {"desc": "Grocery", "amount": "₹2,500"},
-                {"desc": "Electricity Bill", "amount": "₹1,200"},
-                {"desc": "Restaurant", "amount": "₹850"},
-                {"desc": "Fuel", "amount": "₹3,000"},
-                {"desc": "Shopping", "amount": "₹5,500"}
-            ]
 
-            for txn in transactions:
-                st.write(f"**{txn['desc']}**: {txn['amount']}")
+            # Fetch transactions from backend
+            transactions = self.api_client.get_transactions(limit=5)
+
+            if transactions:
+                for txn in transactions:
+                    desc = txn.get("description", "Unknown")
+                    amount = txn.get("amount", 0)
+                    txn_type = txn.get("type", "expense")
+
+                    if txn_type == "income":
+                        st.write(f"✅ **{desc}**: ₹{amount:,.0f}")
+                    else:
+                        st.write(f"💸 **{desc}**: ₹{amount:,.0f}")
+            else:
+                st.info("No transactions yet. Add your first transaction!")
+
+        # Add Transaction Form
+        st.divider()
+        st.subheader("➕ Add New Transaction")
+
+        with st.form("add_transaction"):
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                description = st.text_input("Description", placeholder="e.g., Grocery Shopping")
+            with col2:
+                amount = st.number_input("Amount (₹)", min_value=1, value=1000, step=100)
+            with col3:
+                txn_type = st.selectbox("Type", ["expense", "income"])
+
+            category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Bills", "Entertainment", "Salary", "Other"])
+
+            submit = st.form_submit_button("Add Transaction", use_container_width=True)
+
+            if submit and description:
+                with st.spinner("Adding transaction..."):
+                    result = self.api_client.create_transaction({
+                        "description": description,
+                        "amount": amount,
+                        "category": category,
+                        "type": txn_type
+                    })
+
+                if result.get("success"):
+                    st.success(f"✅ Transaction added successfully! ID: {result.get('transaction_id')}")
+                    st.rerun()
+                else:
+                    st.error("Failed to add transaction")
+
+        # AI Assistant Quick Access
+        st.divider()
+        st.subheader("💡 Ask Your AI Financial Assistant")
+
+        user_question = st.text_input("Ask me anything about personal finance...",
+                                     placeholder="e.g., How can I save more money?")
+
+        if st.button("Get AI Advice", use_container_width=True):
+            if user_question:
+                with st.spinner("🤖 AI is thinking..."):
+                    response = self.api_client.get_ai_advice(user_question, persona="professional")
+                st.info(f"**AI Response:** {response}")
+            else:
+                st.warning("Please enter a question")
 
     def logout(self):
         """Logout user and reset session"""
