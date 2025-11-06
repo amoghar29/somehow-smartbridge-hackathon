@@ -15,7 +15,7 @@ from config.settings import (
     API_HOST,
     API_PORT
 )
-from routes import base_routes, finance_routes
+from routes import base_routes, finance_routes, auth_router
 from core.logger import logger
 
 # Initialize FastAPI app
@@ -60,6 +60,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(base_routes.router, tags=["Health"])
 app.include_router(finance_routes.router, tags=["Finance"])
+app.include_router(auth_router, tags=["Auth"])
 
 
 @app.on_event("startup")

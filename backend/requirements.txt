@@ -15,3 +15,11 @@ python-multipart==0.0.6
 
 # Optional but recommended
 httpx==0.25.2
+
+pymongo[srv]
+
+passlib[bcrypt]
+
+python-jose[pycryptodome]
+
+python-multipart

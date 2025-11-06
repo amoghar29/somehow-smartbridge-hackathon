@@ -186,13 +186,14 @@ class FinanceApp:
             password = st.text_input("Password", type="password", key="login_password")
 
             if st.button("Login", use_container_width=True):
-                # Simulate login for demo purposes
                 if email and password:
-                    st.session_state.authenticated = True
-                    st.session_state.username = email.split('@')[0]
-                    st.session_state.net_worth = 500000
-                    st.session_state.savings_rate = 25.5
-                    st.rerun()
+                    result = self.api_client.login(email, password)
+                    if result and result.get("access_token"):
+                        st.session_state.authenticated = True
+                        st.session_state.username = email.split('@')[0]
+                        st.rerun()
+                    else:
+                        st.error("Invalid email or password")
                 else:
                     st.error("Please enter both email and password")
 
@@ -205,7 +206,11 @@ class FinanceApp:
 
             if st.button("Sign Up", use_container_width=True):
                 if password == confirm_password:
-                    st.success("Account created successfully! Please login.")
+                    user_data = {"name": name, "email": email, "password": password}
+                    success = self.api_client.signup(user_data)
+                    if success:
+                        st.success("Account created successfully! Please login.")
+                    # Error handled in api_client
                 else:
                     st.error("Passwords do not match")
 
@@ -337,7 +342,7 @@ class FinanceApp:
                     st.success(f"✅ Transaction added successfully! ID: {result.get('transaction_id')}")
                     st.rerun()
                 else:
-                    st.error("Failed to add transaction")
+                    st.error(result.get("error", "Failed to add transaction"))
 
         # AI Assistant Quick Access
         st.divider()

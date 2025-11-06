@@ -39,3 +39,11 @@ CORS_ORIGINS = ["*"]  # Allow all origins for local development
 
 # Environment
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
+# MongoDB Configuration
+MONGO_DETAILS = "mongodb://localhost:27017"
+
+# Security
+SECRET_KEY = "your_secret_key"  # Replace with a strong, secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30

@@ -1,0 +1,22 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=0.25.0",
+    "bcrypt>=5.0.0",
+    "fastapi>=0.104.0",
+    "httpx>=0.25.0",
+    "jose>=1.0.0",
+    "numpy>=2.3.4",
+    "passlib>=1.7.4",
+    "pydantic>=2.5.0",
+    "python-dotenv>=1.0.0",
+    "python-multipart>=0.0.6",
+    "sentencepiece>=0.1.99",
+    "torch>=2.1.0",
+    "transformers>=4.36.0",
+    "uvicorn[standard]>=0.24.0",
+]

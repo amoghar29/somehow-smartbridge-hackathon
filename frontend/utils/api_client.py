@@ -15,8 +15,11 @@ class APIClient:
         self.session.timeout = 30  # 30 seconds timeout
 
     def _get_headers(self) -> dict:
-        """Get headers for API requests"""
+        """Get headers for API requests, including JWT if available"""
         headers = {"Content-Type": "application/json"}
+        token = st.session_state.get("auth_token")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         return headers
 
     def check_health(self) -> bool:
@@ -167,20 +170,41 @@ class APIClient:
 
     def login(self, email: str, password: str) -> Optional[Dict]:
         """
-        Simulated login for demo purposes
-        Backend doesn't have auth endpoints yet
+        Real login using backend auth endpoint
         """
-        if email and password:
-            return {
-                "access_token": "demo_token",
-                "token_type": "bearer",
-                "user": {"email": email, "name": email.split('@')[0]}
-            }
+        try:
+            response = self.session.post(
+                f"{self.base_url}/login",
+                json={"email": email, "password": password},
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code == 200:
+                data = response.json()
+                st.session_state["auth_token"] = data.get("access_token")
+                st.session_state["username"] = email.split('@')[0]
+                st.session_state["name"] = data.get("name", "User")
+                return data
+            else:
+                st.error(response.json().get("detail", "Login failed"))
+        except Exception as e:
+            st.error(f"Login failed: {str(e)}")
         return None
 
     def signup(self, user_data: Dict) -> bool:
         """
-        Simulated signup for demo purposes
-        Backend doesn't have auth endpoints yet
+        Real signup using backend auth endpoint
         """
-        return True
+        try:
+            response = self.session.post(
+                f"{self.base_url}/signup",
+                json=user_data,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code == 200:
+                st.success("Account created successfully! Please login.")
+                return True
+            else:
+                st.error(response.json().get("detail", "Signup failed"))
+        except Exception as e:
+            st.error(f"Signup failed: {str(e)}")
+        return False

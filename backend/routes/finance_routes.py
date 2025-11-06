@@ -1,7 +1,8 @@
 """
 Finance-related API routes
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime
 import json
 from pathlib import Path
@@ -29,12 +30,34 @@ from agents.intent_router import route_intent, get_fallback_response
 from core.granite_api import generate
 from core.logger import logger
 from config.settings import DATA_DIR
+from core.database import db
+from jose import JWTError, jwt
+from config.settings import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = db.users.find_one({"email": email})
+    if user is None:
+        raise credentials_exception
+    return user
 
 @router.post("/ai/generate", response_model=ChatResponse)
-async def generate_ai_response(request: ChatRequest):
+async def generate_ai_response(request: ChatRequest, user=Depends(get_current_user)):
+    logger.info(f"AI generate request from user: {user.get('email', 'unknown')} | Question: {request.question}")
     """
     General AI response endpoint - Always uses AI model for all questions
 
@@ -56,27 +79,37 @@ Answer:"""
 
         response_text = generate(prompt, max_new_tokens=150, temperature=0.7)
 
+        # Save conversation to MongoDB
+        db.conversations.insert_one({
+            "user_id": str(user["_id"]),
+            "question": request.question,
+            "response": response_text,
+            "timestamp": datetime.utcnow()
+        })
+        logger.info(f"AI response saved for user: {user.get('email', 'unknown')}")
+
         # If response is too short or nonsensical, provide a fallback
         if not response_text or len(response_text.strip()) < 20:
             response_text = """I'm here to help with your financial questions! I can assist with:
 
-- Budget planning and expense tracking
-- Savings goals and strategies
-- Investment basics and portfolio allocation
-- Tax planning and deductions
-- Debt management
+        - Budget planning and expense tracking
+        - Savings goals and strategies
+        - Investment basics and portfolio allocation
+        - Tax planning and deductions
+        - Debt management
 
-Please ask a specific question and I'll provide detailed advice."""
+        Please ask a specific question and I'll provide detailed advice."""
 
         return ChatResponse(response=response_text)
 
     except Exception as e:
-        logger.error(f"AI generate failed: {str(e)}")
+        logger.error(f"AI generate failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/ai/budget-summary", response_model=BudgetResponse)
-async def get_budget_summary(request: BudgetRequest):
+async def get_budget_summary(request: BudgetRequest, user=Depends(get_current_user)):
+    logger.info(f"Budget analysis request from user: {user.get('email', 'unknown')} | Income: {request.income}")
     """
     Budget analysis endpoint
 
@@ -101,12 +134,13 @@ async def get_budget_summary(request: BudgetRequest):
         )
 
     except Exception as e:
-        logger.error(f"Budget analysis failed: {str(e)}")
+        logger.error(f"Budget analysis failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/ai/goal-planner", response_model=GoalResponse)
-async def plan_financial_goal(request: GoalRequest):
+async def plan_financial_goal(request: GoalRequest, user=Depends(get_current_user)):
+    logger.info(f"Goal planning request from user: {user.get('email', 'unknown')} | Goal: {request.goal_name}")
     """
     Goal planning endpoint
 
@@ -134,12 +168,13 @@ async def plan_financial_goal(request: GoalRequest):
         )
 
     except Exception as e:
-        logger.error(f"Goal planning failed: {str(e)}")
+        logger.error(f"Goal planning failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/ai/tax-advice", response_model=TaxResponse)
-async def get_tax_advisory(request: TaxRequest):
+async def get_tax_advisory(request: TaxRequest, user=Depends(get_current_user)):
+    logger.info(f"Tax advice request from user: {user.get('email', 'unknown')} | Income: {request.income}")
     """
     Tax advice endpoint
 
@@ -165,12 +200,13 @@ async def get_tax_advisory(request: TaxRequest):
         )
 
     except Exception as e:
-        logger.error(f"Tax advice failed: {str(e)}")
+        logger.error(f"Tax advice failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/analytics/summary", response_model=AnalyticsResponse)
-async def get_analytics_summary():
+async def get_analytics_summary(user=Depends(get_current_user)):
+    logger.info(f"Analytics summary requested by user: {user.get('email', 'unknown')}")
     """
     Get analytics summary for dashboard
 
@@ -180,24 +216,28 @@ async def get_analytics_summary():
     try:
         logger.info("Analytics summary requested")
 
-        # Load sample transactions
-        transactions_file = DATA_DIR / "sample_transactions.json"
-
-        if transactions_file.exists():
-            with open(transactions_file, 'r') as f:
-                transactions = json.load(f)
-        else:
-            transactions = []
+        # Aggregate transactions from MongoDB for this user
+        transactions = list(db.transactions.find({"user_id": str(user["_id"])}))
 
         # Calculate totals
         total_income = sum(t['amount'] for t in transactions if t['type'] == 'income')
         total_expenses = sum(t['amount'] for t in transactions if t['type'] == 'expense')
 
-        # Create trend data (simplified)
+        # Monthly trend data (group by month)
+        from collections import defaultdict
+        monthly = defaultdict(lambda: {"income": 0, "expenses": 0})
+        for t in transactions:
+            dt = t.get("date")
+            if isinstance(dt, str):
+                dt = datetime.fromisoformat(dt)
+            month = dt.strftime("%b")
+            if t["type"] == "income":
+                monthly[month]["income"] += t["amount"]
+            else:
+                monthly[month]["expenses"] += t["amount"]
         trend_data = [
-            {"month": "Jan", "income": total_income * 0.9, "expenses": total_expenses * 0.85},
-            {"month": "Feb", "income": total_income * 0.95, "expenses": total_expenses * 0.90},
-            {"month": "Mar", "income": total_income, "expenses": total_expenses}
+            {"month": m, "income": v["income"], "expenses": v["expenses"]}
+            for m, v in sorted(monthly.items())
         ]
 
         totals = {
@@ -213,12 +253,13 @@ async def get_analytics_summary():
         )
 
     except Exception as e:
-        logger.error(f"Analytics summary failed: {str(e)}")
+        logger.error(f"Analytics summary failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/transactions/add", response_model=TransactionResponse)
-async def add_transaction(request: TransactionRequest):
+async def add_transaction(request: TransactionRequest, user=Depends(get_current_user)):
+    logger.info(f"Add transaction request from user: {user.get('email', 'unknown')} | Description: {request.description}")
     """
     Add a new transaction
 
@@ -231,44 +272,31 @@ async def add_transaction(request: TransactionRequest):
     try:
         logger.info(f"Adding transaction: {request.description}")
 
-        # Load existing transactions
-        transactions_file = DATA_DIR / "sample_transactions.json"
-
-        if transactions_file.exists():
-            with open(transactions_file, 'r') as f:
-                transactions = json.load(f)
-        else:
-            transactions = []
-
         # Create new transaction
         new_transaction = {
-            "id": f"txn_{len(transactions) + 1}",
+            "user_id": str(user["_id"]),
             "description": request.description,
             "amount": request.amount,
             "category": request.category,
             "type": request.type,
-            "date": datetime.now().isoformat()
+            "date": datetime.utcnow()
         }
-
-        transactions.append(new_transaction)
-
-        # Save back to file
-        with open(transactions_file, 'w') as f:
-            json.dump(transactions, f, indent=2)
-
+        result = db.transactions.insert_one(new_transaction)
+        logger.info(f"Transaction added for user: {user.get('email', 'unknown')} | Transaction ID: {str(result.inserted_id)}")
         return TransactionResponse(
             success=True,
             message="Transaction added successfully",
-            transaction_id=new_transaction["id"]
+            transaction_id=str(result.inserted_id)
         )
 
     except Exception as e:
-        logger.error(f"Add transaction failed: {str(e)}")
+        logger.error(f"Add transaction failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/transactions/recent")
-async def get_recent_transactions():
+async def get_recent_transactions(user=Depends(get_current_user)):
+    logger.info(f"Recent transactions requested by user: {user.get('email', 'unknown')}")
     """
     Get recent transactions
 
@@ -278,17 +306,12 @@ async def get_recent_transactions():
     try:
         logger.info("Recent transactions requested")
 
-        transactions_file = DATA_DIR / "sample_transactions.json"
-
-        if transactions_file.exists():
-            with open(transactions_file, 'r') as f:
-                transactions = json.load(f)
-        else:
-            transactions = []
-
-        # Return last 10 transactions
-        return {"transactions": transactions[-10:]}
+        transactions = list(db.transactions.find({"user_id": str(user["_id"])}).sort("date", -1).limit(10))
+        for txn in transactions:
+            txn["id"] = str(txn["_id"])
+            txn.pop("_id")
+        return {"transactions": transactions}
 
     except Exception as e:
-        logger.error(f"Get transactions failed: {str(e)}")
+        logger.error(f"Get transactions failed for user {user.get('email', 'unknown')}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
