@@ -1,0 +1,56 @@
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+**/.venv/
+**/venv/
+**/env/
+**/.env/
+**/ENV/
+**/*.egg-info/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Node.js
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/out/
+**/.cache/
+
+# IDE and editors
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS
+.DS_Store
+Thumbs.db
+**/desktop.ini
+
+# Build outputs
+**/*.log
+**/coverage/
+**/.coverage
+**/htmlcov/
+
+# Large data files
+**/*.csv
+**/*.sqlite
+**/*.db
+**/*.parquet
+
+# Git
+.git/
+
+# Documentation (if very large)
+# Uncomment if you have large doc files you don't need Claude to see
+# **/docs/build/
+# **/*.pdf

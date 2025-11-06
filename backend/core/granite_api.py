@@ -6,6 +6,7 @@ from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 import torch
 from config.settings import MODEL_ID, DEVICE, CACHE_DIR, MAX_NEW_TOKENS, DEFAULT_TEMPERATURE
 from core.logger import logger
+from core.response_cache import response_cache
 
 class GraniteAPI:
     """
@@ -45,14 +46,30 @@ class GraniteAPI:
 
             # Load model from cache only (no internet check)
             logger.info("Loading model from cache (this may take 10-30 seconds)...")
-            model = AutoModelForCausalLM.from_pretrained(
-                MODEL_ID,
-                cache_dir=CACHE_DIR,
-                torch_dtype=torch.float32,  # Use float32 for CPU
-                trust_remote_code=True,
-                device_map="auto",  # Let accelerate handle device placement
-                local_files_only=True  # Force using cache, don't check for updates
-            )
+
+            # Try to use quantization for faster CPU inference
+            try:
+                # Use bitsandbytes 8-bit quantization if available
+                model = AutoModelForCausalLM.from_pretrained(
+                    MODEL_ID,
+                    cache_dir=CACHE_DIR,
+                    load_in_8bit=True,  # 8-bit quantization for faster inference
+                    trust_remote_code=True,
+                    device_map="auto",
+                    local_files_only=True
+                )
+                logger.info("Model loaded with 8-bit quantization")
+            except Exception as quant_error:
+                # Fallback to regular loading if quantization fails
+                logger.warning(f"Quantization failed ({quant_error}), loading with float32")
+                model = AutoModelForCausalLM.from_pretrained(
+                    MODEL_ID,
+                    cache_dir=CACHE_DIR,
+                    torch_dtype=torch.float32,  # Use float32 for CPU
+                    trust_remote_code=True,
+                    device_map="auto",  # Let accelerate handle device placement
+                    local_files_only=True  # Force using cache, don't check for updates
+                )
 
             # Create text generation pipeline
             # Don't specify device when using device_map with accelerate
@@ -89,6 +106,11 @@ class GraniteAPI:
         Raises:
             Exception: If model is not loaded or generation fails
         """
+        # Check cache first
+        cached_response = response_cache.get(prompt, max_new_tokens, temperature)
+        if cached_response:
+            return cached_response
+
         # Lazy load model on first use
         if GraniteAPI._pipeline is None and not GraniteAPI._initialized:
             logger.info("Model not loaded yet. Loading now...")
@@ -103,19 +125,31 @@ class GraniteAPI:
         try:
             logger.info(f"Generating response for prompt: {prompt[:100]}...")
 
-            # Generate text with better parameters for coherent responses
-            result = GraniteAPI._pipeline(
-                prompt,
-                max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                do_sample=True,
-                top_p=0.95,
-                top_k=50,
-                repetition_penalty=1.2,
-                num_return_sequences=1,
-                pad_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id,
-                eos_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id
-            )
+            # Generate text with optimized parameters for CPU speed
+            # Use greedy decoding when temperature is 0 for faster generation
+            if temperature == 0.0:
+                result = GraniteAPI._pipeline(
+                    prompt,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False,  # Greedy decoding - much faster
+                    num_return_sequences=1,
+                    pad_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id,
+                    eos_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id
+                )
+            else:
+                # Sampling mode - slower but more diverse
+                result = GraniteAPI._pipeline(
+                    prompt,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    do_sample=True,
+                    top_p=0.95,
+                    top_k=50,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                    pad_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id,
+                    eos_token_id=GraniteAPI._pipeline.tokenizer.eos_token_id
+                )
 
             # Extract generated text
             generated_text = result[0]['generated_text']
@@ -143,6 +177,9 @@ class GraniteAPI:
                     response = response[:200]  # Fallback: first 200 chars
 
             logger.info(f"Generated response: {response[:100]}...")
+
+            # Cache the response
+            response_cache.set(prompt, max_new_tokens, temperature, response)
 
             return response
 
