@@ -89,6 +89,7 @@ class CreateGoalRequest(BaseModel):
     category: str = Field(..., min_length=1, description="Goal category (Emergency Fund, Travel, Car, Home, etc.)")
     deadline: str = Field(..., description="Goal deadline in ISO format")
     monthly_required: Optional[float] = Field(default=None, ge=0, description="Required monthly savings")
+    description: Optional[str] = Field(default=None, description="Goal description")
 
     @validator('name')
     def name_not_empty(cls, v):
@@ -105,9 +106,26 @@ class CreateGoalRequest(BaseModel):
 
 class UpdateGoalRequest(BaseModel):
     """Request model for updating a goal"""
+    name: Optional[str] = Field(default=None, min_length=1, description="Updated goal name")
+    target_amount: Optional[float] = Field(default=None, gt=0, description="Updated target amount")
     current_amount: Optional[float] = Field(default=None, ge=0, description="Updated current amount")
-    status: Optional[str] = Field(default=None, description="Goal status (active/paused/completed)")
+    category: Optional[str] = Field(default=None, min_length=1, description="Updated category")
+    deadline: Optional[str] = Field(default=None, description="Updated deadline")
     monthly_required: Optional[float] = Field(default=None, ge=0, description="Updated monthly requirement")
+    description: Optional[str] = Field(default=None, description="Updated description")
+    status: Optional[str] = Field(default=None, description="Goal status (active/paused/completed)")
+
+    @validator('name')
+    def name_not_empty(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Goal name cannot be empty')
+        return v.strip() if v else None
+
+    @validator('category')
+    def category_not_empty(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError('Category cannot be empty')
+        return v.strip() if v else None
 
     @validator('status')
     def validate_status(cls, v):
@@ -117,3 +135,9 @@ class UpdateGoalRequest(BaseModel):
                 raise ValueError(f'Status must be one of {allowed_statuses}')
             return v.lower()
         return v
+
+
+class ContributionRequest(BaseModel):
+    """Request model for adding a contribution to a goal"""
+    amount: float = Field(..., gt=0, description="Contribution amount")
+    note: Optional[str] = Field(default=None, description="Optional note about the contribution")

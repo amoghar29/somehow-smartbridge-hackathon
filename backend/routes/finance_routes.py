@@ -13,7 +13,8 @@ from models.request_models import (
     TransactionRequest,
     TaxRequest,
     CreateGoalRequest,
-    UpdateGoalRequest
+    UpdateGoalRequest,
+    ContributionRequest
 )
 from models.response_models import (
     ChatResponse,
@@ -25,7 +26,8 @@ from models.response_models import (
     ErrorResponse,
     CreateGoalResponse,
     UpdateGoalResponse,
-    GoalListResponse
+    GoalListResponse,
+    ContributionResponse
 )
 from agents.budget_agent import analyze_budget
 from agents.goal_agent import plan_goal
@@ -34,8 +36,8 @@ from agents.intent_router import route_intent, get_fallback_response
 from core.granite_service import generate, is_api_available
 from core.logger import logger
 from core.db_service import TransactionService, ChatHistoryService, GoalService
-from core.database import Database
-from config.settings import DATA_DIR
+from core.database import Database, get_db
+from config.settings import DATA_DIR, COLLECTION_GOALS
 
 
 router = APIRouter()
@@ -403,6 +405,7 @@ async def create_goal(request: CreateGoalRequest):
             "category": request.category,
             "deadline": request.deadline,
             "monthly_required": request.monthly_required,
+            "description": request.description,
             "status": "active"
         }
 
@@ -490,12 +493,22 @@ async def update_goal(goal_id: str, request: UpdateGoalRequest):
 
         # Prepare update data (only include fields that are provided)
         update_data = {}
+        if request.name is not None:
+            update_data["name"] = request.name
+        if request.target_amount is not None:
+            update_data["target_amount"] = request.target_amount
         if request.current_amount is not None:
             update_data["current_amount"] = request.current_amount
-        if request.status is not None:
-            update_data["status"] = request.status
+        if request.category is not None:
+            update_data["category"] = request.category
+        if request.deadline is not None:
+            update_data["deadline"] = request.deadline
         if request.monthly_required is not None:
             update_data["monthly_required"] = request.monthly_required
+        if request.description is not None:
+            update_data["description"] = request.description
+        if request.status is not None:
+            update_data["status"] = request.status
 
         if not update_data:
             return UpdateGoalResponse(
@@ -520,6 +533,127 @@ async def update_goal(goal_id: str, request: UpdateGoalRequest):
 
     except Exception as e:
         logger.error(f"Update goal failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/goals/contribute/{goal_id}", response_model=ContributionResponse)
+async def add_contribution(goal_id: str, request: ContributionRequest):
+    """
+    Add a contribution to a goal (increases current_amount)
+
+    Args:
+        goal_id: ID of the goal to add contribution to
+        request: ContributionRequest with amount and optional note
+
+    Returns:
+        ContributionResponse: Success status and new amount
+    """
+    try:
+        logger.info(f"Adding contribution to goal: {goal_id}")
+
+        if not Database.is_connected():
+            return ContributionResponse(
+                success=False,
+                message="Database not connected"
+            )
+
+        # Get the current goal to calculate new amount
+        from bson import ObjectId
+        db = get_db()
+        collection = db[COLLECTION_GOALS]
+
+        goal = await collection.find_one({"_id": ObjectId(goal_id)})
+
+        if not goal:
+            return ContributionResponse(
+                success=False,
+                message="Goal not found"
+            )
+
+        # Calculate new current_amount
+        current_amount = goal.get("current_amount", 0.0)
+        new_amount = current_amount + request.amount
+
+        # Ensure we don't exceed target
+        target_amount = goal.get("target_amount", 0)
+        if new_amount > target_amount:
+            new_amount = target_amount
+
+        # Update the goal
+        update_data = {
+            "current_amount": new_amount,
+            "updated_at": datetime.utcnow()
+        }
+
+        # Check if goal is completed
+        if new_amount >= target_amount:
+            update_data["status"] = "completed"
+
+        result = await collection.update_one(
+            {"_id": ObjectId(goal_id)},
+            {"$set": update_data}
+        )
+
+        if result.modified_count > 0:
+            logger.info(f"Contribution added to goal {goal_id}: ₹{request.amount}")
+            return ContributionResponse(
+                success=True,
+                message=f"Successfully added ₹{request.amount:,.0f} to goal",
+                new_amount=new_amount,
+                goal_id=goal_id
+            )
+        else:
+            return ContributionResponse(
+                success=False,
+                message="Failed to add contribution"
+            )
+
+    except Exception as e:
+        logger.error(f"Add contribution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/goals/delete/{goal_id}", response_model=UpdateGoalResponse)
+async def delete_goal(goal_id: str):
+    """
+    Delete a goal
+
+    Args:
+        goal_id: ID of the goal to delete
+
+    Returns:
+        UpdateGoalResponse: Success status
+    """
+    try:
+        logger.info(f"Deleting goal: {goal_id}")
+
+        if not Database.is_connected():
+            return UpdateGoalResponse(
+                success=False,
+                message="Database not connected"
+            )
+
+        from bson import ObjectId
+        db = get_db()
+        collection = db[COLLECTION_GOALS]
+
+        result = await collection.delete_one({"_id": ObjectId(goal_id)})
+
+        if result.deleted_count > 0:
+            logger.info(f"Goal deleted: {goal_id}")
+            return UpdateGoalResponse(
+                success=True,
+                message="Goal deleted successfully",
+                goal_id=goal_id
+            )
+        else:
+            return UpdateGoalResponse(
+                success=False,
+                message="Goal not found"
+            )
+
+    except Exception as e:
+        logger.error(f"Delete goal failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

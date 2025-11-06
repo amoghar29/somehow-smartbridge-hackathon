@@ -26,6 +26,12 @@ if not st.session_state.get('authenticated', False):
     st.warning("Please login to view your goals")
     st.stop()
 
+# Initialize financial data in session state if not present
+if 'monthly_income' not in st.session_state:
+    st.session_state.monthly_income = 1358419.20
+if 'total_expenses' not in st.session_state:
+    st.session_state.total_expenses = 35000
+
 # Initialize goals in session state
 if 'goals' not in st.session_state:
     st.session_state.goals = [
@@ -35,7 +41,8 @@ if 'goals' not in st.session_state:
             "current": 180000,
             "category": "Emergency Fund",
             "deadline": "Dec 2025",
-            "monthly_required": 10000
+            "monthly_required": 10000,
+            "description": "Build a safety net to cover 6 months of expenses for unexpected situations"
         },
         {
             "name": "Dream Vacation to Europe",
@@ -43,7 +50,8 @@ if 'goals' not in st.session_state:
             "current": 52500,
             "category": "Travel",
             "deadline": "Jun 2025",
-            "monthly_required": 12000
+            "monthly_required": 12000,
+            "description": "Two-week trip to visit Paris, Rome, and Barcelona"
         },
         {
             "name": "New Laptop",
@@ -51,7 +59,8 @@ if 'goals' not in st.session_state:
             "current": 64000,
             "category": "Other",
             "deadline": "Jan 2025",
-            "monthly_required": 8000
+            "monthly_required": 8000,
+            "description": "High-performance laptop for work and personal projects"
         }
     ]
 
@@ -68,7 +77,8 @@ def init_form_defaults():
         'form_current_savings': 10000,
         'form_target_date': datetime.now().date(),
         'form_category': "Travel",
-        'form_goal_type': "Short Term (<1 year)"
+        'form_goal_type': "Short Term (<1 year)",
+        'form_description': ""
     }
     for key, default_value in defaults.items():
         if key not in st.session_state:
@@ -87,6 +97,13 @@ with st.expander("➕ Create New Goal", expanded=False):
             value=st.session_state.form_goal_name,
             placeholder="e.g., Dream Vacation",
             key="input_goal_name"
+        )
+        description = st.text_area(
+            "Description",
+            value=st.session_state.form_description,
+            placeholder="Describe your goal...",
+            key="input_description",
+            height=100
         )
         target_amount = st.number_input(
             "Target Amount (₹)",
@@ -143,21 +160,29 @@ with st.expander("➕ Create New Goal", expanded=False):
             st.session_state.form_goal_type = goal_type
             st.session_state.form_target_date = target_date
             st.session_state.form_category = category
+            st.session_state.form_description = description
 
             try:
                 with st.spinner("🤖 AI is analyzing your financial situation..."):
                     # Calculate months until target date
                     months_until_target = max(1, (target_date - datetime.now().date()).days // 30)
 
-                    # Get user income (default if not set)
-                    user_income = st.session_state.get('monthly_income', 50000)
+                    # Get user income and expenses (use defaults if not set)
+                    user_income = st.session_state.get('monthly_income', 1358419.20)
+                    user_expenses = st.session_state.get('total_expenses', 35000)
 
-                    # Call the real AI API
+                    # Ensure income is not 0
+                    if user_income == 0:
+                        user_income = 1358419.20
+
+                    # Call the real AI API with income and expenses
                     result = api_client.create_goal_plan(
                         goal_name=goal_name,
                         target_amount=target_amount,
                         months=months_until_target,
                         income=user_income,
+                        expenses=user_expenses,
+                        current_savings=current_savings,
                         persona="professional"
                     )
 
@@ -230,7 +255,8 @@ if st.session_state.ai_recommendations:
                     "current": st.session_state.form_current_savings,
                     "category": st.session_state.form_category,
                     "deadline": (datetime.now() + timedelta(days=easy_months*30)).strftime("%b %Y"),
-                    "monthly_required": int(easy_monthly)
+                    "monthly_required": int(easy_monthly),
+                    "description": st.session_state.form_description
                 }
                 st.session_state.goals.append(new_goal)
                 st.session_state.ai_recommendations = None
@@ -257,7 +283,8 @@ if st.session_state.ai_recommendations:
                     "current": st.session_state.form_current_savings,
                     "category": st.session_state.form_category,
                     "deadline": st.session_state.form_target_date.strftime("%b %Y"),
-                    "monthly_required": int(moderate_monthly)
+                    "monthly_required": int(moderate_monthly),
+                    "description": st.session_state.form_description
                 }
                 st.session_state.goals.append(new_goal)
                 st.session_state.ai_recommendations = None
@@ -284,7 +311,8 @@ if st.session_state.ai_recommendations:
                     "current": st.session_state.form_current_savings,
                     "category": st.session_state.form_category,
                     "deadline": (datetime.now() + timedelta(days=aggressive_months*30)).strftime("%b %Y"),
-                    "monthly_required": int(aggressive_monthly)
+                    "monthly_required": int(aggressive_monthly),
+                    "description": st.session_state.form_description
                 }
                 st.session_state.goals.append(new_goal)
                 st.session_state.ai_recommendations = None
@@ -314,6 +342,8 @@ else:
             with col1:
                 st.markdown(f"### {goal['name']}")
                 st.caption(f"Category: {goal['category']} | Deadline: {goal['deadline']}")
+                if goal.get('description'):
+                    st.markdown(f"*{goal['description']}*")
 
                 # Progress bar
                 progress = (goal['current'] / goal['target']) * 100
@@ -350,16 +380,164 @@ else:
                 fig.update_layout(height=200, margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(fig, use_container_width=True)
 
+            # Initialize session state for contribution and edit modes
+            if f'show_contribution_{goal["name"]}' not in st.session_state:
+                st.session_state[f'show_contribution_{goal["name"]}'] = False
+            if f'show_edit_{goal["name"]}' not in st.session_state:
+                st.session_state[f'show_edit_{goal["name"]}'] = False
+
             col_a, col_b, col_c = st.columns(3)
             with col_a:
                 if st.button("💰 Add Contribution", key=f"add_{goal['name']}"):
-                    st.info("Contribution form will appear here")
+                    st.session_state[f'show_contribution_{goal["name"]}'] = not st.session_state[f'show_contribution_{goal["name"]}']
+                    st.session_state[f'show_edit_{goal["name"]}'] = False
+                    st.rerun()
             with col_b:
                 if st.button("✏️ Edit Goal", key=f"edit_{goal['name']}"):
-                    st.info("Edit form will appear here")
+                    st.session_state[f'show_edit_{goal["name"]}'] = not st.session_state[f'show_edit_{goal["name"]}']
+                    st.session_state[f'show_contribution_{goal["name"]}'] = False
+                    st.rerun()
             with col_c:
                 if st.button("📊 View Details", key=f"view_{goal['name']}"):
-                    st.info("Detailed view will appear here")
+                    with st.expander("Goal Details", expanded=True):
+                        st.markdown(f"""
+                        **Goal Name:** {goal['name']}
+
+                        **Description:** {goal.get('description', 'No description provided')}
+
+                        **Category:** {goal['category']}
+
+                        **Target Amount:** ₹{goal['target']:,}
+
+                        **Current Savings:** ₹{goal['current']:,}
+
+                        **Remaining:** ₹{goal['target'] - goal['current']:,}
+
+                        **Monthly Required:** ₹{goal['monthly_required']:,}
+
+                        **Deadline:** {goal['deadline']}
+
+                        **Progress:** {progress:.1f}%
+                        """)
+
+            # Add Contribution Form
+            if st.session_state[f'show_contribution_{goal["name"]}']:
+                with st.container():
+                    st.markdown("#### 💰 Add Contribution")
+                    contribution_col1, contribution_col2 = st.columns([2, 1])
+
+                    with contribution_col1:
+                        contribution_amount = st.number_input(
+                            "Contribution Amount (₹)",
+                            min_value=1,
+                            max_value=goal['target'] - goal['current'],
+                            value=min(5000, goal['target'] - goal['current']),
+                            step=100,
+                            key=f"contribution_amount_{goal['name']}"
+                        )
+                        contribution_note = st.text_input(
+                            "Note (optional)",
+                            placeholder="e.g., Monthly savings",
+                            key=f"contribution_note_{goal['name']}"
+                        )
+
+                    with contribution_col2:
+                        new_total = goal['current'] + contribution_amount
+                        new_progress = (new_total / goal['target']) * 100
+                        st.metric("New Total", f"₹{new_total:,}")
+                        st.metric("New Progress", f"{new_progress:.1f}%")
+
+                    submit_col1, submit_col2 = st.columns([1, 1])
+                    with submit_col1:
+                        if st.button("✅ Submit Contribution", key=f"submit_contribution_{goal['name']}"):
+                            # Find and update the goal
+                            for g in st.session_state.goals:
+                                if g['name'] == goal['name']:
+                                    g['current'] += contribution_amount
+                                    break
+                            st.session_state[f'show_contribution_{goal["name"]}'] = False
+                            st.success(f"✅ Added ₹{contribution_amount:,} to {goal['name']}!")
+                            st.rerun()
+
+                    with submit_col2:
+                        if st.button("❌ Cancel", key=f"cancel_contribution_{goal['name']}"):
+                            st.session_state[f'show_contribution_{goal["name"]}'] = False
+                            st.rerun()
+
+            # Edit Goal Form
+            if st.session_state[f'show_edit_{goal["name"]}']:
+                with st.container():
+                    st.markdown("#### ✏️ Edit Goal")
+                    edit_col1, edit_col2 = st.columns(2)
+
+                    with edit_col1:
+                        edit_name = st.text_input(
+                            "Goal Name",
+                            value=goal['name'],
+                            key=f"edit_name_{goal['name']}"
+                        )
+                        edit_description = st.text_area(
+                            "Description",
+                            value=goal.get('description', ''),
+                            key=f"edit_description_{goal['name']}",
+                            height=100
+                        )
+                        edit_target = st.number_input(
+                            "Target Amount (₹)",
+                            min_value=goal['current'] + 1000,
+                            value=goal['target'],
+                            step=1000,
+                            key=f"edit_target_{goal['name']}"
+                        )
+
+                    with edit_col2:
+                        edit_category = st.selectbox(
+                            "Category",
+                            ["Travel", "Education", "Emergency Fund", "Home", "Car", "Retirement", "Other"],
+                            index=["Travel", "Education", "Emergency Fund", "Home", "Car", "Retirement", "Other"].index(goal['category']) if goal['category'] in ["Travel", "Education", "Emergency Fund", "Home", "Car", "Retirement", "Other"] else 0,
+                            key=f"edit_category_{goal['name']}"
+                        )
+                        edit_monthly = st.number_input(
+                            "Monthly Required (₹)",
+                            min_value=0,
+                            value=goal['monthly_required'],
+                            step=500,
+                            key=f"edit_monthly_{goal['name']}"
+                        )
+                        edit_deadline = st.text_input(
+                            "Deadline",
+                            value=goal['deadline'],
+                            key=f"edit_deadline_{goal['name']}"
+                        )
+
+                    submit_col1, submit_col2, submit_col3 = st.columns([1, 1, 1])
+                    with submit_col1:
+                        if st.button("✅ Save Changes", key=f"submit_edit_{goal['name']}"):
+                            # Find and update the goal
+                            for g in st.session_state.goals:
+                                if g['name'] == goal['name']:
+                                    g['name'] = edit_name
+                                    g['description'] = edit_description
+                                    g['target'] = edit_target
+                                    g['category'] = edit_category
+                                    g['monthly_required'] = edit_monthly
+                                    g['deadline'] = edit_deadline
+                                    break
+                            st.session_state[f'show_edit_{goal["name"]}'] = False
+                            st.success(f"✅ Updated {edit_name}!")
+                            st.rerun()
+
+                    with submit_col2:
+                        if st.button("❌ Cancel", key=f"cancel_edit_{goal['name']}"):
+                            st.session_state[f'show_edit_{goal["name"]}'] = False
+                            st.rerun()
+
+                    with submit_col3:
+                        if st.button("🗑️ Delete Goal", key=f"delete_{goal['name']}"):
+                            st.session_state.goals = [g for g in st.session_state.goals if g['name'] != goal['name']]
+                            st.session_state[f'show_edit_{goal["name"]}'] = False
+                            st.warning(f"🗑️ Deleted {goal['name']}")
+                            st.rerun()
 
             st.divider()
 

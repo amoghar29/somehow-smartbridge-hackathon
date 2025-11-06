@@ -69,6 +69,7 @@ class GoalDB(BaseModel):
     category: str
     deadline: str  # ISO format date string
     monthly_required: float
+    description: Optional[str] = None  # Goal description
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     status: str = "active"  # "active", "completed", "paused"

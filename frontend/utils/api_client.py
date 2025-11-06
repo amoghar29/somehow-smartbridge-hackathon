@@ -147,25 +147,39 @@ Please provide:
         return {}
 
     def create_goal_plan(self, goal_name: str, target_amount: float, months: int,
-                        income: float, persona: str = "professional") -> Dict:
+                        income: float, expenses: float = 0, current_savings: float = 0,
+                        persona: str = "professional") -> Dict:
         """Create AI-powered goal plan using /ai/generate endpoint"""
         try:
-            monthly_target = target_amount / months if months > 0 else 0
+            remaining_amount = target_amount - current_savings
+            monthly_target = remaining_amount / months if months > 0 else 0
+            available_savings = income - expenses
+            savings_percentage = (monthly_target / income * 100) if income > 0 else 0
 
             # Create a comprehensive question for goal planning
             question = f"""Help me plan for this financial goal:
 
 Goal: {goal_name}
 Target Amount: ₹{target_amount:,.0f}
+Current Savings: ₹{current_savings:,.0f}
+Remaining to Save: ₹{remaining_amount:,.0f}
 Timeline: {months} months
-Monthly Income: ₹{income:,.0f}
-Required Monthly Savings: ₹{monthly_target:,.0f}
+
+My Financial Situation:
+- Monthly Income: ₹{income:,.0f}
+- Monthly Expenses: ₹{expenses:,.0f}
+- Available for Savings: ₹{available_savings:,.0f}
+
+Goal Requirements:
+- Required Monthly Savings: ₹{monthly_target:,.0f}
+- This is {savings_percentage:.1f}% of my monthly income
+- This is {(monthly_target / available_savings * 100) if available_savings > 0 else 0:.1f}% of my available savings
 
 Please provide:
-1. A brief analysis of the goal feasibility
-2. Step-by-step action plan to achieve this goal
-3. Recommended investment strategies based on the timeline
-4. Tips for staying on track"""
+1. Assessment of goal feasibility based on my current financial situation
+2. Specific action plan to achieve this goal within {months} months
+3. Investment or savings strategies suitable for this timeline
+4. Tips to maximize savings and stay on track"""
 
             # Use /ai/generate endpoint
             response = self.session.post(

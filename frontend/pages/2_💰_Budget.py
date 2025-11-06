@@ -20,6 +20,10 @@ if not api_client.check_health():
     st.error("⚠️ Backend server is not running! Please start it at http://localhost:8000")
     st.stop()
 
+# Initialize monthly income in session state if not present
+if 'monthly_income' not in st.session_state:
+    st.session_state.monthly_income = 1358419.20
+
 st.write("Analyze your spending patterns and get AI-powered insights to optimize your budget.")
 
 # Budget input section
@@ -28,7 +32,14 @@ st.subheader("📝 Enter Your Budget Details")
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    monthly_income = st.number_input("Monthly Income (₹)", min_value=0, value=60000, step=5000)
+    # Use session state value as default
+    default_income = st.session_state.get('monthly_income', 1358419.20)
+    monthly_income = st.number_input("Monthly Income (₹)", min_value=0, value=default_income, step=5000)
+
+    # Save to session state when changed
+    if monthly_income != st.session_state.get('monthly_income'):
+        st.session_state.monthly_income = monthly_income
+
     persona = st.selectbox("Financial Profile", ["conservative", "professional", "aggressive"])
 
 with col2:

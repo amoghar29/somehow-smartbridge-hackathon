@@ -73,3 +73,11 @@ class GoalListResponse(BaseModel):
     """Response model for listing goals"""
     goals: List[Dict[str, Any]]
     total: int
+
+
+class ContributionResponse(BaseModel):
+    """Response model for adding a contribution"""
+    success: bool
+    message: str
+    new_amount: Optional[float] = None
+    goal_id: Optional[str] = None
