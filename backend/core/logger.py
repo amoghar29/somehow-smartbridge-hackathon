@@ -27,15 +27,21 @@ def setup_logger():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # Console handler
+    # Console handler with UTF-8 encoding
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
+    # Set encoding to UTF-8 to handle special characters like ₹
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except:
+            pass
     logger.addHandler(console_handler)
 
-    # File handler
+    # File handler with UTF-8 encoding
     log_file = LOGS_DIR / "app.log"
-    file_handler = logging.FileHandler(log_file, mode='a')
+    file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)

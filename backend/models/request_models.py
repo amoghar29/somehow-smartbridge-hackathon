@@ -79,3 +79,41 @@ class TaxRequest(BaseModel):
     income: float = Field(..., gt=0, description="Annual income")
     persona: str = Field(default="general", description="User persona")
     deductions: Optional[Dict[str, float]] = Field(default=None, description="Current deductions")
+
+
+class CreateGoalRequest(BaseModel):
+    """Request model for creating a goal in database"""
+    name: str = Field(..., min_length=1, description="Goal name")
+    target_amount: float = Field(..., gt=0, description="Target amount to achieve")
+    current_amount: float = Field(default=0.0, ge=0, description="Current saved amount")
+    category: str = Field(..., min_length=1, description="Goal category (Emergency Fund, Travel, Car, Home, etc.)")
+    deadline: str = Field(..., description="Goal deadline in ISO format")
+    monthly_required: Optional[float] = Field(default=None, ge=0, description="Required monthly savings")
+
+    @validator('name')
+    def name_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError('Goal name cannot be empty')
+        return v.strip()
+
+    @validator('category')
+    def category_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError('Category cannot be empty')
+        return v.strip()
+
+
+class UpdateGoalRequest(BaseModel):
+    """Request model for updating a goal"""
+    current_amount: Optional[float] = Field(default=None, ge=0, description="Updated current amount")
+    status: Optional[str] = Field(default=None, description="Goal status (active/paused/completed)")
+    monthly_required: Optional[float] = Field(default=None, ge=0, description="Updated monthly requirement")
+
+    @validator('status')
+    def validate_status(cls, v):
+        if v is not None:
+            allowed_statuses = ['active', 'paused', 'completed']
+            if v.lower() not in allowed_statuses:
+                raise ValueError(f'Status must be one of {allowed_statuses}')
+            return v.lower()
+        return v

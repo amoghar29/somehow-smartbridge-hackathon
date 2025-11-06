@@ -94,5 +94,45 @@
     "category": "Investment",
     "type": "expense",
     "date": "2025-01-30T00:00:00"
+  },
+  {
+    "id": "txn_13",
+    "description": "new hobby",
+    "amount": 1000.0,
+    "category": "Food",
+    "type": "expense",
+    "date": "2025-11-06T07:50:50.457903"
+  },
+  {
+    "id": "txn_14",
+    "description": "new hobby",
+    "amount": 1000.0,
+    "category": "Food",
+    "type": "expense",
+    "date": "2025-11-06T07:50:58.253569"
+  },
+  {
+    "id": "txn_15",
+    "description": "bgfbf",
+    "amount": 49023.0,
+    "category": "Food & Dining",
+    "type": "expense",
+    "date": "2025-11-06T10:24:14.198276"
+  },
+  {
+    "id": "txn_16",
+    "description": "Test Transaction from API",
+    "amount": 1250.5,
+    "category": "Food & Dining",
+    "type": "expense",
+    "date": "2025-11-06T10:58:14.029081"
+  },
+  {
+    "id": "txn_17",
+    "description": "salalry",
+    "amount": 10000.0,
+    "category": "Salary",
+    "type": "income",
+    "date": "2025-11-06T11:00:10.758241"
   }
 ]

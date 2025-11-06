@@ -3,7 +3,7 @@ Tax Advisory Agent
 Provides educational tax-saving advice for Indian users
 """
 from typing import Dict, Any, Optional
-from core.granite_api import generate
+from core.granite_service import generate, is_api_available
 from core.utils import format_currency
 from core.logger import logger
 
@@ -45,12 +45,19 @@ Provide:
 
 Keep it educational and concise (under 200 words). Note: This is general guidance, not professional tax advice."""
 
-        # Generate advice using AI
-        advice = generate(prompt, max_new_tokens=250, temperature=0.7)
-
-        logger.info("Tax advice generated successfully")
-
-        return advice.strip()
+        # Generate advice using Claude API (instant!)
+        try:
+            if is_api_available():
+                logger.info("Generating AI tax advice using Claude API...")
+                advice = generate(prompt, max_tokens=250, temperature=0.7)
+                logger.info("Claude API tax advice generated successfully")
+                return advice.strip()
+            else:
+                logger.info("Claude API not available, using fallback")
+                return _get_fallback_tax_advice(income, persona)
+        except Exception as e:
+            logger.warning(f"AI generation failed: {str(e)}, using fallback")
+            return _get_fallback_tax_advice(income, persona)
 
     except Exception as e:
         logger.error(f"Tax advice generation failed: {str(e)}")

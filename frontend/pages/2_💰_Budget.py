@@ -76,22 +76,33 @@ if st.button("🤖 Get AI Budget Analysis", use_container_width=True, type="prim
     st.subheader("🤖 AI Budget Analysis & Insights")
 
     with st.spinner("AI is analyzing your budget..."):
-        # Call backend AI budget analysis
-        result = api_client.get_budget_analysis(
-            income=monthly_income,
-            expenses=expenses,
-            persona=persona
-        )
+        # Format expenses as a readable string
+        expense_str = ", ".join([f"{k}: ₹{v:,.0f}" for k, v in expenses.items()])
 
-    if result:
-        # Display summary
-        if "summary" in result:
-            st.success("✅ Analysis Complete!")
-            st.markdown(f"**Budget Summary:**\n\n{result['summary']}")
+        # Create comprehensive budget analysis question
+        question = f"""Analyze this monthly budget:
 
-        # Display insights
-        if "insights" in result:
-            st.info(f"**💡 AI Insights & Recommendations:**\n\n{result['insights']}")
+Income: ₹{monthly_income:,.0f}
+Total Expenses: ₹{total_expenses:,.0f}
+Expenses breakdown: {expense_str}
+Net Savings: ₹{savings:,.0f}
+Savings Rate: {savings_rate:.1f}%
+
+Please provide:
+1. A brief budget summary
+2. Key insights about spending patterns
+3. Practical recommendations to optimize the budget
+4. Specific suggestions for each high-expense category"""
+
+        # Call AI using get_ai_advice
+        result = api_client.get_ai_advice(question, persona=persona)
+
+    if result and not result.startswith("Error") and not result.startswith("⚠️"):
+        st.success("✅ Analysis Complete!")
+        st.info(f"**💡 AI Budget Analysis:**\n\n{result}")
+    elif result.startswith("⚠️"):
+        st.warning(result)
+        st.info("To enable real AI responses, set the ANTHROPIC_API_KEY environment variable in the backend.")
     else:
         st.error("Failed to get budget analysis. Please try again.")
 

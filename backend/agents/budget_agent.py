@@ -3,7 +3,7 @@ Budget Analysis Agent
 Analyzes user spending patterns and provides financial insights
 """
 from typing import Dict, Any
-from core.granite_api import generate
+from core.granite_service import generate, is_api_available
 from core.utils import (
     calculate_total_expenses,
     calc_savings_rate,
@@ -62,11 +62,19 @@ Top Expense Categories:
 
 Provide 3-4 brief, specific recommendations to improve their financial situation. Keep each point under 20 words."""
 
-        # Generate insights using AI
-        ai_response = generate(prompt, max_new_tokens=250, temperature=0.7)
-
-        # Parse insights into a list
-        insights = _parse_insights(ai_response)
+        # Generate insights using Claude API (instant!)
+        try:
+            if is_api_available():
+                logger.info("Generating AI insights using Claude API...")
+                ai_response = generate(prompt, max_tokens=250, temperature=0.7)
+                insights = _parse_insights(ai_response)
+                logger.info("Claude API insights generated successfully")
+            else:
+                logger.info("Claude API not available, using fallback")
+                insights = _get_fallback_insights(income, total_expenses, savings_rate, top_expenses)
+        except Exception as e:
+            logger.warning(f"AI generation failed: {str(e)}, using fallback")
+            insights = _get_fallback_insights(income, total_expenses, savings_rate, top_expenses)
 
         logger.info(f"Budget analysis completed with {len(insights)} insights")
 

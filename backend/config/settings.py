@@ -39,3 +39,13 @@ CORS_ORIGINS = ["*"]  # Allow all origins for local development
 
 # Environment
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
+# MongoDB Configuration
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "finance_assistant")
+
+# MongoDB Collections
+COLLECTION_TRANSACTIONS = "transactions"
+COLLECTION_CHAT_HISTORY = "chat_history"
+COLLECTION_GOALS = "goals"
+COLLECTION_USERS = "users"

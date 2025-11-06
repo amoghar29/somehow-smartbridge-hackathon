@@ -53,3 +53,23 @@ class ErrorResponse(BaseModel):
     """Response model for errors"""
     error: str
     details: Optional[str] = None
+
+
+class CreateGoalResponse(BaseModel):
+    """Response model for creating a goal"""
+    success: bool
+    message: str
+    goal_id: Optional[str] = None
+
+
+class UpdateGoalResponse(BaseModel):
+    """Response model for updating a goal"""
+    success: bool
+    message: str
+    goal_id: Optional[str] = None
+
+
+class GoalListResponse(BaseModel):
+    """Response model for listing goals"""
+    goals: List[Dict[str, Any]]
+    total: int

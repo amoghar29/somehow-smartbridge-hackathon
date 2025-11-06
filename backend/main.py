@@ -70,6 +70,15 @@ async def startup_event():
     logger.info(f"Starting {APP_NAME} v{APP_VERSION}")
     logger.info(f"API documentation available at http://{API_HOST}:{API_PORT}/docs")
 
+    # Connect to MongoDB
+    try:
+        from core.database import Database
+        await Database.connect_db()
+        logger.info("MongoDB connection initialized")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        logger.warning("Application will continue without database persistence")
+
     # Initialize AI model (will load on first use)
     try:
         from core.granite_api import granite_api
@@ -85,13 +94,22 @@ async def shutdown_event():
     """
     logger.info(f"Shutting down {APP_NAME}")
 
+    # Close MongoDB connection
+    try:
+        from core.database import Database
+        await Database.close_db()
+        logger.info("MongoDB connection closed")
+    except Exception as e:
+        logger.error(f"Error closing MongoDB connection: {str(e)}")
+
 
 if __name__ == "__main__":
     # Run the application
+    # reload=False to prevent disconnections and keep AI model in memory
     uvicorn.run(
         "main:app",
         host=API_HOST,
         port=API_PORT,
-        reload=True,
+        reload=False,  # Disabled auto-reload for stability
         log_level="info"
     )

@@ -103,16 +103,42 @@ class APIClient:
             return f"Error: {str(e)}"
 
     def get_budget_analysis(self, income: float, expenses: Dict[str, float], persona: str = "professional") -> Dict:
-        """Get AI-powered budget analysis"""
+        """Get AI-powered budget analysis using /ai/generate endpoint"""
         try:
+            # Format expenses as a readable string
+            expense_str = ", ".join([f"{k}: ₹{v:,.0f}" for k, v in expenses.items()])
+            total_expenses = sum(expenses.values())
+            savings = income - total_expenses
+
+            # Create a comprehensive question for the AI
+            question = f"""Analyze this monthly budget:
+
+Income: ₹{income:,.0f}
+Total Expenses: ₹{total_expenses:,.0f}
+Expenses breakdown: {expense_str}
+Net Savings: ₹{savings:,.0f}
+
+Please provide:
+1. A brief budget summary
+2. Key insights about spending patterns
+3. Practical recommendations to optimize the budget"""
+
+            # Use /ai/generate endpoint
             response = self.session.post(
-                f"{self.base_url}/ai/budget-summary",
+                f"{self.base_url}/ai/generate",
                 headers=self._get_headers(),
-                json={"income": income, "expenses": expenses, "persona": persona},
+                json={"question": question, "persona": persona},
                 timeout=60
             )
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                ai_response = data.get("response", "")
+
+                # Return in expected format
+                return {
+                    "summary": ai_response,
+                    "insights": ai_response
+                }
         except requests.exceptions.Timeout:
             st.warning("Request timed out. The AI model might be loading.")
             return {}
@@ -122,22 +148,45 @@ class APIClient:
 
     def create_goal_plan(self, goal_name: str, target_amount: float, months: int,
                         income: float, persona: str = "professional") -> Dict:
-        """Create AI-powered goal plan"""
+        """Create AI-powered goal plan using /ai/generate endpoint"""
         try:
+            monthly_target = target_amount / months if months > 0 else 0
+
+            # Create a comprehensive question for goal planning
+            question = f"""Help me plan for this financial goal:
+
+Goal: {goal_name}
+Target Amount: ₹{target_amount:,.0f}
+Timeline: {months} months
+Monthly Income: ₹{income:,.0f}
+Required Monthly Savings: ₹{monthly_target:,.0f}
+
+Please provide:
+1. A brief analysis of the goal feasibility
+2. Step-by-step action plan to achieve this goal
+3. Recommended investment strategies based on the timeline
+4. Tips for staying on track"""
+
+            # Use /ai/generate endpoint
             response = self.session.post(
-                f"{self.base_url}/ai/goal-planner",
+                f"{self.base_url}/ai/generate",
                 headers=self._get_headers(),
-                json={
-                    "goal_name": goal_name,
-                    "target_amount": target_amount,
-                    "months": months,
-                    "income": income,
-                    "persona": persona
-                },
+                json={"question": question, "persona": persona},
                 timeout=60
             )
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                ai_response = data.get("response", "")
+
+                # Return in expected format
+                return {
+                    "goal_name": goal_name,
+                    "target_amount": target_amount,
+                    "months": months,
+                    "monthly_savings": monthly_target,
+                    "plan": ai_response,
+                    "advice": ai_response
+                }
         except requests.exceptions.Timeout:
             st.warning("Request timed out. The AI model might be loading.")
             return {}
@@ -146,17 +195,31 @@ class APIClient:
         return {}
 
     def get_tax_advice(self, income: float, persona: str = "professional") -> str:
-        """Get AI-powered tax advice"""
+        """Get AI-powered tax advice using /ai/generate endpoint"""
         try:
+            # Create a comprehensive question for tax planning
+            question = f"""Provide tax-saving advice for Indian tax laws:
+
+Annual Income: ₹{income:,.0f}
+
+Please provide:
+1. Overview of applicable tax regime (old vs new)
+2. Common tax-saving investments under Section 80C
+3. Other tax deductions to consider
+4. General tax planning tips
+
+Keep it educational and practical. Note: This is general guidance, not professional tax advice."""
+
+            # Use /ai/generate endpoint
             response = self.session.post(
-                f"{self.base_url}/ai/tax-advice",
+                f"{self.base_url}/ai/generate",
                 headers=self._get_headers(),
-                json={"income": income, "persona": persona},
+                json={"question": question, "persona": persona},
                 timeout=60
             )
             if response.status_code == 200:
                 data = response.json()
-                return data.get("tax_advice", "No advice available")
+                return data.get("response", "No advice available")
         except requests.exceptions.Timeout:
             return "Request timed out. The AI model might be loading. Please try again."
         except Exception as e:

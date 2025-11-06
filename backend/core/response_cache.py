@@ -3,6 +3,7 @@ Simple in-memory cache for AI responses
 """
 from functools import lru_cache
 import hashlib
+from typing import Optional
 from core.logger import logger
 
 
@@ -18,7 +19,7 @@ class ResponseCache:
         cache_str = f"{prompt}|{max_tokens}|{temperature}"
         return hashlib.md5(cache_str.encode()).hexdigest()
 
-    def get(self, prompt: str, max_tokens: int, temperature: float) -> str | None:
+    def get(self, prompt: str, max_tokens: int, temperature: float) -> Optional[str]:
         """Get cached response if available"""
         key = self.get_key(prompt, max_tokens, temperature)
         if key in self.cache:

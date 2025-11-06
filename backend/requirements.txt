@@ -3,11 +3,19 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 
-# AI/ML Dependencies
+# AI - Claude API (primary, fast!)
+anthropic>=0.18.0
+
+# AI/ML - Local model (fallback, optional - very slow on CPU!)
 transformers==4.36.0
 torch==2.1.1
 accelerate==0.25.0
 sentencepiece==0.1.99
+
+# Database
+motor==3.3.2  # Async MongoDB driver for FastAPI
+pymongo==4.6.1  # MongoDB driver
+dnspython==2.4.2  # Required for MongoDB connection strings
 
 # Utilities
 python-dotenv==1.0.0

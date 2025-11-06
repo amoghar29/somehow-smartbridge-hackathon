@@ -74,25 +74,61 @@ with col4:
     effective_rate = (tax_with_cess / annual_income * 100) if annual_income > 0 else 0
     st.metric("Effective Tax Rate", f"{effective_rate:.1f}%")
 
-st.metric("**Tax Payable**", f"₹{tax_with_cess:,.0f}", delta=f"₹{(annual_income * 0.3 - tax_with_cess):,.0f} saved")
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("**Tax Payable**", f"₹{tax_with_cess:,.0f}")
+with col2:
+    savings_vs_max = (annual_income * 0.3 - tax_with_cess)
+    st.metric("**Tax Saved**", f"₹{savings_vs_max:,.0f}")
 
-# Get AI tax advice
-if st.button("🤖 Get AI Tax-Saving Advice", use_container_width=True, type="primary"):
-    st.divider()
-    st.subheader("🤖 AI-Powered Tax Advice")
+st.divider()
 
-    with st.spinner("AI is analyzing your tax situation..."):
-        # Call backend AI tax advisor
-        advice = api_client.get_tax_advice(
-            income=annual_income,
-            persona=persona
-        )
+# Get AI tax advice - More prominent section
+st.subheader("💡 Need Help Saving More on Taxes?")
+st.write("Get personalized AI-powered tax recommendations based on your income and current deductions.")
 
-    if advice:
-        st.success("✅ Tax Analysis Complete!")
-        st.info(f"**💡 AI Tax Advisor:**\n\n{advice}")
-    else:
-        st.error("Failed to get tax advice. Please try again.")
+col1, col2 = st.columns([2, 1])
+with col1:
+    if st.button("🤖 Get AI Tax-Saving Recommendations", use_container_width=True, type="primary", help="Click to get personalized tax advice from AI"):
+        st.divider()
+        st.subheader("🤖 AI-Powered Tax Advice")
+
+        with st.spinner("AI is analyzing your tax situation..."):
+            # Create comprehensive tax advice question
+            question = f"""Provide tax-saving advice for Indian tax laws:
+
+Annual Income: ₹{annual_income:,.0f}
+Current Deductions: ₹{total_deductions:,.0f}
+- Section 80C: ₹{deduction_80c:,.0f}
+- Section 80D (Health): ₹{deduction_80d:,.0f}
+- Other Deductions: ₹{other_deductions:,.0f}
+Taxable Income: ₹{taxable_income:,.0f}
+Estimated Tax: ₹{tax_with_cess:,.0f}
+
+Please provide:
+1. Overview of applicable tax regime (old vs new)
+2. Common tax-saving investments under Section 80C
+3. Other tax deductions to consider
+4. General tax planning tips to reduce my tax burden
+
+Keep it educational and practical. Note: This is general guidance, not professional tax advice."""
+
+            # Call AI using get_ai_advice
+            advice = api_client.get_ai_advice(question, persona=persona)
+
+        if advice and not advice.startswith("Error") and not advice.startswith("⚠️"):
+            st.success("✅ Tax Analysis Complete!")
+            st.info(f"**💡 AI Tax Advisor:**\n\n{advice}")
+        elif advice.startswith("⚠️"):
+            st.warning(advice)
+        else:
+            st.error("Failed to get tax advice. Please try again.")
+
+with col2:
+    st.markdown("**Quick Tips:**")
+    st.caption("• Review all deductions\n• Compare tax regimes\n• Plan investments")
+
+st.divider()
 
 # Visualization
 st.divider()

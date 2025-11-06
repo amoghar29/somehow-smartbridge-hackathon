@@ -3,7 +3,7 @@ Goal Planning Agent
 Creates savings plans and provides advice for financial goals
 """
 from typing import Dict, Any
-from core.granite_api import generate
+from core.granite_service import generate, is_api_available
 from core.utils import calculate_monthly_savings_needed, format_currency
 from core.logger import logger
 
@@ -72,8 +72,18 @@ Provide:
 
 Keep it concise and actionable (under 150 words)."""
 
-        # Generate advice using AI
-        advice = generate(prompt, max_new_tokens=200, temperature=0.7)
+        # Generate advice using Claude API (instant!)
+        try:
+            if is_api_available():
+                logger.info("Generating AI advice using Claude API...")
+                advice = generate(prompt, max_tokens=200, temperature=0.7)
+                logger.info("Claude API advice generated successfully")
+            else:
+                logger.info("Claude API not available, using fallback")
+                advice = _get_fallback_advice(goal_name, monthly_needed, income_percentage)
+        except Exception as ai_error:
+            logger.warning(f"AI generation failed: {str(ai_error)}, using fallback")
+            advice = _get_fallback_advice(goal_name, monthly_needed, income_percentage)
 
         logger.info(f"Goal plan created successfully for: {goal_name}")
 
